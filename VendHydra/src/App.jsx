@@ -5,6 +5,7 @@ import PaymentScreen from './screens/PaymentScreen.jsx';
 import DispensingScreen from './screens/DispensingScreen.jsx';
 import ThankYouScreen from './screens/ThankYouScreen.jsx';
 import ErrorScreen from './screens/ErrorScreen.jsx';
+import AdminScreen from './screens/AdminScreen.jsx';
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
         <Route path="/dispensing" element={<DispensingScreen />} />
         <Route path="/thank-you" element={<ThankYouScreen />} />
         <Route path="/error" element={<ErrorScreen />} />
+        <Route path="/admin" element={<AdminScreen />} />
       </Routes>
     </div>
   );

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
-import axios from 'axios'; // Import axios
+import axios from 'axios';
 
-// Define the backend API URL
 const API_URL = 'http://localhost:3000/api';
 
 const DispensingScreen = () => {
@@ -13,8 +12,10 @@ const DispensingScreen = () => {
 
   const [progress, setProgress] = useState(0);
   const [stepText, setStepText] = useState('Initializing...');
+  
+  // FIX: Use a ref to track if we already sent the command
+  const hasDispensed = useRef(false);
 
-  // Redirect if no orderId
   useEffect(() => {
     if (!product || !orderId) {
       navigate('/');
@@ -24,16 +25,26 @@ const DispensingScreen = () => {
   // 1. Tell the backend to start dispensing (triggers MQTT)
   useEffect(() => {
     if (!orderId) return;
+    
+    // FIX: If we already dispensed, STOP here. Don't do it twice.
+    if (hasDispensed.current) return;
+    hasDispensed.current = true;
 
     const triggerDispense = async () => {
       try {
-        // This is the call that sends the MQTT command
         await axios.post(`${API_URL}/orders/${orderId}/dispense`);
         console.log('Dispense command sent for order:', orderId);
         setStepText('Sending command to machine...');
       } catch (err) {
         console.error('Failed to trigger dispense', err);
-        navigate('/error', { state: { message: 'Hardware command failed.' } });
+        
+        // Optional: If the error is "Order not PAID" (because it's already dispensing), 
+        // we can ignore it. Otherwise, show error.
+        if (err.response && err.response.status === 400) {
+            console.warn("Dispense might have already started, ignoring 400 error.");
+        } else {
+            navigate('/error', { state: { message: 'Hardware command failed.' } });
+        }
       }
     };
 
@@ -44,28 +55,22 @@ const DispensingScreen = () => {
   useEffect(() => {
     if (!orderId) return;
 
-    // Start polling every 2 seconds
     const interval = setInterval(async () => {
       try {
         const response = await axios.get(`${API_URL}/orders/${orderId}/status`);
         const { status, progress, currentStep } = response.data;
 
-        // Update the UI from the backend's data
         setProgress(progress);
         setStepText(currentStep);
 
-        // Check if the order is complete
         if (status === 'COMPLETED') {
-          clearInterval(interval); // Stop polling
+          clearInterval(interval);
           console.log('Order completed!');
-          
-          // Wait 1 second on the final step, then navigate
           setTimeout(() => {
             navigate('/thank-you', { state: { product } });
           }, 1000);
         }
         
-        // Handle a failed state from the backend
         if (status === 'FAILED') {
            clearInterval(interval);
            navigate('/error', { state: { message: 'Dispensing failed.' } });
@@ -73,19 +78,14 @@ const DispensingScreen = () => {
 
       } catch (err) {
         console.error('Failed to get order status', err);
-        // Don't navigate to error, just log. The poll will try again.
       }
-    }, 2000); // Poll every 2 seconds
+    }, 2000);
 
-    // Cleanup: stop polling when the component unmounts
     return () => clearInterval(interval);
 
   }, [orderId, navigate, product]);
 
-
-  if (!product) {
-    return null; // Render nothing while redirecting
-  }
+  if (!product) return null;
 
   return (
     <div className="flex flex-col h-screen">
@@ -105,7 +105,6 @@ const DispensingScreen = () => {
           {stepText}
         </h3>
 
-        {/* Progress Bar (now driven by real data) */}
         <div className="w-full max-w-2xl bg-white/20 rounded-full h-8 shadow-inner overflow-hidden">
           <div
             className="bg-primary h-8 rounded-full transition-all duration-500 ease-out"

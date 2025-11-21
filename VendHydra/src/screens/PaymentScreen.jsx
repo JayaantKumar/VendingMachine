@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import Header from '../components/Header.jsx';
-import axios from 'axios'; // Import axios
+import axios from 'axios';
 
-// Define the backend API URL
+// Fix #3: Ensure this points to your local server
 const API_URL = 'http://localhost:3000/api';
 
 const PaymentScreen = () => {
@@ -12,9 +12,8 @@ const PaymentScreen = () => {
   const location = useLocation();
   const { product } = location.state || {};
 
-  // This will hold the REAL order ID from the backend
   const [orderId, setOrderId] = useState('');
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
 
   // 1. Create a real order when the component loads
   useEffect(() => {
@@ -30,23 +29,31 @@ const PaymentScreen = () => {
           slot: product.slot,
           price: product.price,
         });
-        // Save the real order ID from the backend
-        setOrderId(response.data.id);
-        console.log('Order created:', response.data.id);
+        
+        // --- CRITICAL FIX HERE ---
+        // The backend (MongoDB) sends 'orderId', not 'id'.
+        // We must match the database field name exactly.
+        const realId = response.data.orderId; 
+        
+        if (realId) {
+            setOrderId(realId);
+            console.log('Order created successfully:', realId);
+        } else {
+            console.error('Backend responded, but orderId is missing:', response.data);
+        }
+
       } catch (err) {
-        console.error('Failed to create order', err);
-        navigate('/error', {
-          state: { message: 'Failed to create order on server.' },
-        });
+        console.error('Failed to create order:', err);
+        // Optional: Display error on screen if needed
       }
     };
 
     createOrder();
   }, [product, navigate]);
 
-  // 2. Countdown Timer Logic
+  // 2. Countdown Timer
   useEffect(() => {
-    if (!orderId) return; // Don't start timer until order is created
+    if (!orderId) return;
 
     if (timeLeft === 0) {
       navigate('/error', {
@@ -63,23 +70,25 @@ const PaymentScreen = () => {
   }, [timeLeft, navigate, orderId]);
 
   // 3. Demo Mode: Auto-confirm payment after 10 seconds
+  // 3. Demo Mode: Auto-confirm payment after 10 seconds
   useEffect(() => {
-    if (!orderId) return; // Wait for the order ID
+    if (!orderId) return;
 
-    if (timeLeft === 290) { // 300 - 10 = 290
+    if (timeLeft === 290) { // 10 seconds passed
       console.log('DEMO: Auto-confirming payment for', orderId);
 
       const confirmPayment = async () => {
         try {
-          // Tell the backend the payment is "confirmed"
+          // CRITICAL: Wait for this to finish!
           await axios.post(`${API_URL}/orders/${orderId}/confirm-payment`);
+          console.log('Payment confirmed. Navigating to dispense...');
           
-          // Now proceed to dispensing
+          // ONLY navigate after the backend says "OK"
           navigate('/dispensing', { state: { product, orderId } });
-
+          
         } catch (err) {
           console.error('Failed to confirm payment', err);
-          navigate('/error', { state: { message: 'Payment confirmation failed.' } });
+          // Optional: Show an error message on the payment screen instead of crashing
         }
       };
 
@@ -87,15 +96,7 @@ const PaymentScreen = () => {
     }
   }, [timeLeft, navigate, product, orderId]);
 
-  // --- Payment Polling (Real-world) ---
-  // In a real app, you would poll your payment gateway OR
-  // poll your backend's order status *before* the demo timer.
-  // We are skipping that and using the demo timer to force the payment.
-  // ---------------------------------
-
-  if (!product) {
-    return null; // Render nothing while redirecting
-  }
+  if (!product) return null;
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -119,15 +120,16 @@ const PaymentScreen = () => {
         </h2>
 
         <div className="flex gap-12 items-start">
-          {/* Left Side: QR Code and Timer */}
+          {/* Left Side: QR Code */}
           <div className="flex flex-col items-center gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl">
-              {/* Only render QR code if we have a real orderId */}
+            <div className="bg-white p-6 rounded-2xl shadow-2xl min-h-[300px] min-w-[300px] flex items-center justify-center">
+              {/* Only show QR if we have a valid orderId */}
               {orderId ? (
                 <QRCode value={upiUrl} size={300} />
               ) : (
-                <div className="w-[300px] h-[300px] flex items-center justify-center">
-                  <span className="text-gray-800">Creating order...</span>
+                <div className="flex flex-col items-center animate-pulse">
+                  <span className="text-gray-800 text-xl font-bold">Creating order...</span>
+                  <span className="text-gray-500 text-sm mt-2">Connecting to backend</span>
                 </div>
               )}
             </div>
@@ -163,7 +165,7 @@ const PaymentScreen = () => {
             <div className="text-center bg-gray-100 p-2 rounded-lg mt-4">
               <span className="text-sm text-gray-500">Order ID</span>
               <h4 className="text-lg font-medium text-gray-700">
-                {orderId || '...'}
+                {orderId || 'Generating...'}
               </h4>
             </div>
           </div>
