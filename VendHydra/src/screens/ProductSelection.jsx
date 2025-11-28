@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Changed Link to useNavigate for logic
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import { products } from '../data/products.js';
 
@@ -12,38 +12,37 @@ const ProductCard = ({ product }) => {
   const totalPrice = product.price * scoops;
 
   const handleIncrement = (e) => {
-    e.stopPropagation(); // Stop clicking the card
+    e.stopPropagation();
     if (scoops < 3) {
-      setScoops(prev => prev + 1);
+      setScoops((prev) => prev + 1);
     }
   };
 
   const handleDecrement = (e) => {
     e.stopPropagation();
     if (scoops > 1) {
-      setScoops(prev => prev - 1);
+      setScoops((prev) => prev - 1);
     }
   };
 
   const handleSelect = () => {
     // Navigate to payment with the UPDATED price and scoop count
-    navigate('/payment', { 
-      state: { 
+    navigate('/payment', {
+      state: {
         product: {
           ...product,
           price: totalPrice, // Override base price with total price
           originalPrice: product.price,
-          scoops: scoops
-        } 
-      } 
+          scoops: scoops,
+        },
+      },
     });
   };
 
   return (
-    <div 
+    <div
       onClick={handleSelect}
       className="product-card group relative flex flex-col justify-end overflow-hidden cursor-pointer"
-      // Use standard template literal for URL to avoid 404s
       style={{ backgroundImage: `url(${product.image})` }}
     >
       {/* Gradient Overlay */}
@@ -51,7 +50,6 @@ const ProductCard = ({ product }) => {
 
       {/* Content Container */}
       <div className="relative z-10 p-6 flex flex-col gap-3">
-        
         {/* Title */}
         <h3 className="text-4xl font-bold text-white drop-shadow-lg leading-tight">
           {product.name}
@@ -59,28 +57,31 @@ const ProductCard = ({ product }) => {
 
         {/* Price & Scoop Selector Row */}
         <div className="flex items-center justify-between mt-2">
-          
           {/* Dynamic Price Display */}
           <div className="flex flex-col">
-            <span className="text-sm text-gray-300 font-medium uppercase tracking-wider">Total</span>
+            <span className="text-sm text-gray-300 font-medium uppercase tracking-wider">
+              Total
+            </span>
             <span className="text-3xl font-black text-primary drop-shadow-md">
               ₹{totalPrice}
             </span>
           </div>
 
           {/* Scoop Counter Buttons */}
-          <div 
+          <div
             className="flex items-center gap-3 bg-white/20 backdrop-blur-md rounded-full p-1 border border-white/30"
             onClick={(e) => e.stopPropagation()} // Prevent card click when using buttons
           >
             {/* Decrease Button */}
-            <button 
+            <button
               onClick={handleDecrement}
               disabled={scoops === 1}
               className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-xl transition-all
-                ${scoops === 1 
-                  ? 'bg-white/10 text-gray-400 cursor-not-allowed' 
-                  : 'bg-white text-black hover:bg-gray-200 active:scale-95'}`}
+                ${
+                  scoops === 1
+                    ? 'bg-white/10 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-black hover:bg-gray-200 active:scale-95'
+                }`}
             >
               -
             </button>
@@ -88,17 +89,21 @@ const ProductCard = ({ product }) => {
             {/* Scoop Count Display */}
             <div className="flex flex-col items-center w-8">
               <span className="text-xl font-bold text-white">{scoops}</span>
-              <span className="text-[8px] uppercase text-white/80 font-bold tracking-wide">Scoop</span>
+              <span className="text-[8px] uppercase text-white/80 font-bold tracking-wide">
+                Scoop
+              </span>
             </div>
 
             {/* Increase Button */}
-            <button 
+            <button
               onClick={handleIncrement}
               disabled={scoops === 3}
               className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-xl transition-all
-                ${scoops === 3 
-                  ? 'bg-white/10 text-gray-400 cursor-not-allowed' 
-                  : 'bg-primary text-white hover:bg-green-600 active:scale-95 shadow-lg'}`}
+                ${
+                  scoops === 3
+                    ? 'bg-white/10 text-gray-400 cursor-not-allowed'
+                    : 'bg-primary text-white hover:bg-green-600 active:scale-95 shadow-lg'
+                }`}
             >
               +
             </button>
@@ -118,14 +123,17 @@ const ProductCard = ({ product }) => {
 
 const ProductSelection = () => {
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col min-h-screen">
       <Header currentStep={1} />
-      <main className="flex-1 flex flex-col items-center justify-center p-10 overflow-hidden">
+
+      {/* extra top padding so header doesn't overlap */}
+      <main className="flex-1 flex flex-col items-center justify-start p-10 overflow-hidden pt-32">
         <h1 className="text-6xl font-black text-white drop-shadow-xl text-center">
           Ethereal Flavor Journey
         </h1>
         <h2 className="text-2xl text-white/90 drop-shadow-lg mt-4 text-center max-w-3xl">
-          Customize your strength. Choose up to <span className="text-primary font-bold">3 scoops</span> for maximum protein.
+          Customize your strength. Choose up to{' '}
+          <span className="text-primary font-bold">3 scoops</span> for maximum protein.
         </h2>
 
         {/* Horizontal Carousel */}

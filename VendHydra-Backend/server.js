@@ -38,6 +38,7 @@ const orderSchema = new mongoose.Schema({
 const AdSchema = new mongoose.Schema({
   name: String,
   mediaUrl: { type: String, required: true }, // e.g., Cloudinary URL
+  mediaType: { type: String, default: 'video' }, // NEW FIELD: 'image' or 'video'
   duration: { type: Number, default: 5 }, // seconds
   sequence: { type: Number, default: 1 },  // order of appearance
   machineId: { type: String, default: 'ALL' }, // 'ALL' or specific machine id
