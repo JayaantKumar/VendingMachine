@@ -13,6 +13,7 @@
     "express": "^4.19.2",
     "mongoose": "^8.4.1",
     "mqtt": "^5.7.0",
+    "razorpay": "^2.9.6",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

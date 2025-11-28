@@ -27,12 +27,10 @@ const PaymentScreen = () => {
         const response = await axios.post(`${API_URL}/orders`, {
           productId: product.id,
           slot: product.slot,
-          price: product.price,
+          price: product.price, // This is the TOTAL price (calculated in ProductSelection)
         });
         
-        // --- CRITICAL FIX HERE ---
-        // The backend (MongoDB) sends 'orderId', not 'id'.
-        // We must match the database field name exactly.
+        // The backend (MongoDB) sends 'orderId'
         const realId = response.data.orderId; 
         
         if (realId) {
@@ -44,7 +42,6 @@ const PaymentScreen = () => {
 
       } catch (err) {
         console.error('Failed to create order:', err);
-        // Optional: Display error on screen if needed
       }
     };
 
@@ -70,7 +67,6 @@ const PaymentScreen = () => {
   }, [timeLeft, navigate, orderId]);
 
   // 3. Demo Mode: Auto-confirm payment after 10 seconds
-  // 3. Demo Mode: Auto-confirm payment after 10 seconds
   useEffect(() => {
     if (!orderId) return;
 
@@ -88,7 +84,6 @@ const PaymentScreen = () => {
           
         } catch (err) {
           console.error('Failed to confirm payment', err);
-          // Optional: Show an error message on the payment screen instead of crashing
         }
       };
 
@@ -148,20 +143,29 @@ const PaymentScreen = () => {
             <h3 className="text-3xl font-bold text-black border-b border-gray-300 pb-3">
               Order Summary
             </h3>
+            
             <div className="flex justify-between text-xl">
-              <span>{product.name}</span>
+              <span className="font-bold">{product.name}</span>
+            </div>
+
+            {/* SCOOP DETAILS ADDED HERE */}
+            <div className="flex justify-between text-lg text-gray-600 bg-gray-100 p-2 rounded-lg">
+              <span>{product.scoops || 1} x Scoops</span>
               <span className="font-medium">₹{product.price.toFixed(2)}</span>
             </div>
+
             <div className="flex justify-between text-xl text-gray-600">
               <span>Water & Mixing</span>
               <span className="font-medium">Free</span>
             </div>
+
             <div className="border-t border-gray-300 pt-4 mt-4 flex justify-between items-center">
               <span className="text-3xl font-black text-black">Total</span>
               <span className="text-4xl font-black text-primary">
                 ₹{product.price.toFixed(2)}
               </span>
             </div>
+
             <div className="text-center bg-gray-100 p-2 rounded-lg mt-4">
               <span className="text-sm text-gray-500">Order ID</span>
               <h4 className="text-lg font-medium text-gray-700">
