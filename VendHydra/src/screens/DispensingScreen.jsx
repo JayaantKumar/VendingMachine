@@ -2,44 +2,51 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import axios from 'axios';
+import { useCart } from '../context/CartContext.jsx';
 
-const API_URL = 'http://localhost:3000/api';
+// Safe access to API_URL
+const API_URL = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000/api';
 
 const DispensingScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { product, orderId } = location.state || {};
+  const { clearCart } = useCart();
+  const { orderId } = location.state || {};
 
   const [progress, setProgress] = useState(0);
   const [stepText, setStepText] = useState('Initializing...');
   
-  // FIX: Use a ref to track if we already sent the command
+  // Ref to prevent double-firing in React Strict Mode
   const hasDispensed = useRef(false);
 
+  // 1. Clear Cart on Mount (Once dispensing starts, cart is empty)
   useEffect(() => {
-    if (!product || !orderId) {
+    if(orderId) {
+        clearCart();
+    }
+  }, [orderId]);
+
+  // 2. Validation Redirect
+  useEffect(() => {
+    if (!orderId) {
       navigate('/');
     }
-  }, [product, orderId, navigate]);
+  }, [orderId, navigate]);
 
-  // 1. Tell the backend to start dispensing (triggers MQTT)
+  // 3. Trigger Dispense Command (Once)
   useEffect(() => {
     if (!orderId) return;
     
-    // FIX: If we already dispensed, STOP here. Don't do it twice.
     if (hasDispensed.current) return;
     hasDispensed.current = true;
 
     const triggerDispense = async () => {
       try {
         await axios.post(`${API_URL}/orders/${orderId}/dispense`);
-        console.log('Dispense command sent for order:', orderId);
         setStepText('Sending command to machine...');
       } catch (err) {
         console.error('Failed to trigger dispense', err);
-        
-        // Optional: If the error is "Order not PAID" (because it's already dispensing), 
-        // we can ignore it. Otherwise, show error.
+        // Ignore 400 errors (Race condition: Order already dispensing)
         if (err.response && err.response.status === 400) {
             console.warn("Dispense might have already started, ignoring 400 error.");
         } else {
@@ -51,7 +58,7 @@ const DispensingScreen = () => {
     triggerDispense();
   }, [orderId, navigate]);
 
-  // 2. Poll the backend for status updates
+  // 4. Poll for Status Updates
   useEffect(() => {
     if (!orderId) return;
 
@@ -66,8 +73,9 @@ const DispensingScreen = () => {
         if (status === 'COMPLETED') {
           clearInterval(interval);
           console.log('Order completed!');
+          // Wait 1 second before showing Thank You screen
           setTimeout(() => {
-            navigate('/thank-you', { state: { product } });
+            navigate('/thank-you', { state: { orderId } });
           }, 1000);
         }
         
@@ -79,45 +87,43 @@ const DispensingScreen = () => {
       } catch (err) {
         console.error('Failed to get order status', err);
       }
-    }, 2000);
+    }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(interval);
 
-  }, [orderId, navigate, product]);
-
-  if (!product) return null;
+  }, [orderId, navigate]);
 
   return (
     <div className="flex flex-col h-screen">
       <Header currentStep={3} />
       <main className="flex-1 flex flex-col items-center justify-center p-10 gap-10">
         <h1 className="text-5xl font-black drop-shadow-xl">
-          Preparing Your Shake
+          Making Your Drinks
         </h1>
-        <h2 className="text-3xl text-primary font-bold drop-shadow-lg -mt-4">
-          {product.name}
-        </h2>
-
-        {/* Spinner */}
+        
+        {/* Spinning Loader */}
         <div className="spinner"></div>
 
-        <h3 className="text-3xl text-white font-bold drop-shadow-lg h-10">
+        {/* Dynamic Step Text */}
+        <h3 className="text-3xl text-white font-bold drop-shadow-lg h-10 text-center w-full animate-pulse">
           {stepText}
         </h3>
 
-        <div className="w-full max-w-2xl bg-white/20 rounded-full h-8 shadow-inner overflow-hidden">
+        {/* Progress Bar */}
+        <div className="w-full max-w-2xl bg-white/20 rounded-full h-8 overflow-hidden shadow-inner border border-white/10">
           <div
-            className="bg-primary h-8 rounded-full transition-all duration-500 ease-out"
+            className="bg-primary h-full transition-all duration-500 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.6)]"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
-        <span className="text-2xl font-bold drop-shadow-md -mt-4">
+        
+        <span className="text-2xl font-bold drop-shadow-md -mt-4 text-white/80 font-mono">
           {progress}%
         </span>
 
-        <div className="mt-8 bg-white/95 text-gray-800 p-8 rounded-2xl shadow-2xl">
-          <h4 className="text-3xl font-bold text-black text-center">
-            Please collect your shake from the dispenser below
+        <div className="mt-8 bg-white/10 backdrop-blur-md text-white p-8 rounded-2xl shadow-2xl border border-white/20">
+          <h4 className="text-2xl font-bold text-center">
+            Please wait while the machine prepares your order.
           </h4>
         </div>
       </main>
